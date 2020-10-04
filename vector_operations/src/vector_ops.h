@@ -86,7 +86,7 @@ namespace task {
 
     std::stringstream& operator<< (std::stringstream &s, 
                               vector<double> &a) { 
-        for(size_t i = 0; i < a.size(); i++) {
+        for (size_t i = 0; i < a.size(); i++) {
             s << a[i];
 	    if(i != a.size() - 1) s << " "; 
         }
@@ -111,7 +111,7 @@ namespace task {
         vector<double> out;
 	size_t size_of_a = a.size();
         
-	for(size_t i = 0; i < size_of_a; i++) {
+	for (size_t i = 0; i < size_of_a; i++) {
             out.push_back(a.back());
 	    a.pop_back();
         }
@@ -121,7 +121,7 @@ namespace task {
 
     vector<int> operator| (const vector<int> &a, const vector<int> &b) {
         vector<int> out;
-        for(size_t i = 0; i < a.size(); i++) {
+        for (size_t i = 0; i < a.size(); i++) {
             out.push_back(a[i] | b[i]);
         }
         return out;
@@ -129,7 +129,7 @@ namespace task {
 
     vector<int> operator& (const vector<int> &a, const vector<int> &b) {
         vector<int> out;
-        for(size_t i = 0; i < a.size(); i++) {
+        for (size_t i = 0; i < a.size(); i++) {
             out.push_back(a[i] & b[i]);
         }
         return out;
