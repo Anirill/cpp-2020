@@ -8,10 +8,12 @@
 namespace task {
     using std::vector;
 
+    const double EPS = 1e-10;
+
     vector<double> operator+ (const vector<double> &a, 
                               const vector<double> &b) { //+
         vector<double> out;
-        for(size_t i = 0; i < a.size(); i++) {
+        for (size_t i = 0; i < a.size(); i++) {
             out.push_back(a[i] + b[i]);
         }
         return out;
@@ -23,7 +25,7 @@ namespace task {
     
     vector<double> operator- (const vector<double> &a) { //+
         vector<double> out;
-        for(size_t i = 0; i < a.size(); i++) {
+        for (size_t i = 0; i < a.size(); i++) {
             out.push_back(-a[i]);
         }
         return out;
@@ -32,7 +34,7 @@ namespace task {
     vector<double> operator- (const vector<double> &a, 
                               const vector<double> &b) { //+
         vector<double> out;
-        for(size_t i = 0; i < a.size(); i++) {
+        for (size_t i = 0; i < a.size(); i++) {
             out.push_back(a[i] - b[i]);
         }
         return out;
@@ -41,40 +43,45 @@ namespace task {
     
     double operator* (const vector<double> &a, 
                       const vector<double> &b) { //+
-        double out;
-        for(size_t i = 0; i < a.size(); i++) {
+        double out = 0.;
+        for (size_t i = 0; i < a.size(); i++) {
             out += a[i] * b[i];
         }
         return out;
     }
 
-    //--------------------------------------------------------------------------------------------------
 
     vector<double> operator% (const vector<double> &a, 
                               const vector<double> &b) {
         vector<double> out;
-        for(size_t i = 0; i < a.size(); i++) {
-            out.push_back(a[i] - b[i]);
-        }
+        out.push_back(a[1] * b[2] - a[2] * b[1]);
+        out.push_back(a[0] * b[2] - a[2] * b[0]);
+        out.push_back(a[0] * b[1] - a[1] * b[0]);
         return out;
     }
 
-    vector<double> operator|| (const vector<double> &a, 
-                               const vector<double> &b) {
-        vector<double> out;
-        for(size_t i = 0; i < a.size(); i++) {
+    //--------------------------------------------------------------------------------------------------
+
+    bool operator|| (const vector<double> &a, 
+                     const vector<double> &b) {
+/*        vector<double> out;
+        for (size_t i = 0; i < a.size(); i++) {
             out.push_back(a[i] - b[i]);
-        }
-        return out;
+        } */
+        return a * b <= EPS;
     }
 
-    vector<double> operator&& (const vector<double> &a, 
-                               const vector<double> &b) {
-        vector<double> out;
-        for(size_t i = 0; i < a.size(); i++) {
-            out.push_back(a[i] - b[i]);
+    bool operator&& (const vector<double> &a, 
+                    const vector<double> &b) {
+        double cos = 0.;
+        double sqr_a = 0., sqr_b = 0.;
+        for (size_t i = 0; i < a.size(); i++) {
+            cos += a[i] * b[i];
+            sqr_a += a[i] * a[i];
+            sqr_b += b[i] * b[i];
         }
-        return out;
+        cos /= sqrt(sqr_a) * sqrt(sqr_b);
+        return (1 - cos > EPS);
     }
 
     std::ostream& operator<< (std::ostream &s, 
@@ -106,7 +113,7 @@ namespace task {
     }
 
 
-    vector<int> operator| (vector<int> &a, vector<int> &b) {
+    vector<int> operator| (const vector<int> &a, const vector<int> &b) {
         vector<int> out;
         for(size_t i = 0; i < a.size(); i++) {
             out.push_back(a[i] | b[i]);
@@ -114,7 +121,7 @@ namespace task {
         return out;
     }
 
-    vector<int> operator& (vector<int> &a, vector<int> &b) {
+    vector<int> operator& (const vector<int> &a, const vector<int> &b) {
         vector<int> out;
         for(size_t i = 0; i < a.size(); i++) {
             out.push_back(a[i] & b[i]);
