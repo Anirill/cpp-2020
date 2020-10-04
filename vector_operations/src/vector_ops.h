@@ -23,11 +23,12 @@ namespace task {
         return a;
     }
     
-    vector<double> operator- (vector<double> &a) { //+
+    vector<double> operator- (const vector<double> &a) { //+
+        vector<double> out;
         for (size_t i = 0; i < a.size(); i++) {
-           a[i] = -a[i];
+           out.push_back(-a[i]);
         }
-        return a;
+        return out;
     }
 
     vector<double> operator- (const vector<double> &a, 
@@ -50,8 +51,8 @@ namespace task {
     }
 
 
-    vector<double> operator% (vector<double> &a, 
-                              vector<double> &b) {
+    vector<double> operator% (const vector<double> &a, 
+                              const vector<double> &b) {
         vector<double> out;
         out.push_back(a[1] * b[2] - a[2] * b[1]);
         out.push_back(a[0] * b[2] - a[2] * b[0]);
@@ -61,8 +62,8 @@ namespace task {
 
     //--------------------------------------------------------------------------------------------------
 
-    bool operator|| (vector<double> &a, 
-                      vector<double> &b) {
+    bool operator|| (const vector<double> &a, 
+                     const vector<double> &b) {
 /*        vector<double> out;
         for (size_t i = 0; i < a.size(); i++) {
             out.push_back(a[i] - b[i]);
@@ -70,8 +71,8 @@ namespace task {
         return a * b <= EPS_1;
     }
 
-    bool operator&& (vector<double> &a, 
-                     vector<double> &b) {
+    bool operator&& (const vector<double> &a, 
+                     const vector<double> &b) {
         double cos = 0.;
         double sqr_a = 0., sqr_b = 0.;
         for (size_t i = 0; i < a.size(); i++) {
@@ -113,7 +114,7 @@ namespace task {
     }
 
 
-    vector<int> operator| (vector<int> &a, vector<int> &b) {
+    vector<int> operator| (const vector<int> &a, const vector<int> &b) {
         vector<int> out;
         for(size_t i = 0; i < a.size(); i++) {
             out.push_back(a[i] | b[i]);
@@ -121,7 +122,7 @@ namespace task {
         return out;
     }
 
-    vector<int> operator& (vector<int> &a, vector<int> &b) {
+    vector<int> operator& (const vector<int> &a, const vector<int> &b) {
         vector<int> out;
         for(size_t i = 0; i < a.size(); i++) {
             out.push_back(a[i] & b[i]);
