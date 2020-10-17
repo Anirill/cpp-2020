@@ -8,7 +8,8 @@ using std::vector;
 const double EPS_1 = 1e-7;
 
 vector<double> operator+(const vector<double> &a, const vector<double> &b) {
-  vector<double> out(a.capacity());
+  vector<double> out;
+  out.reserve(a.size());
   for (size_t i = 0; i < a.size(); i++) {
     out.push_back(a[i] + b[i]);
   }
@@ -19,6 +20,7 @@ vector<double> operator+(const std::vector<double> &a) { return a; }
 
 vector<double> operator-(const vector<double> &a) {
   vector<double> out;
+  out.reserve(a.size());  
   for (size_t i = 0; i < a.size(); i++) {
     out.push_back(-a[i]);
   }
@@ -27,6 +29,7 @@ vector<double> operator-(const vector<double> &a) {
 
 vector<double> operator-(const vector<double> &a, const vector<double> &b) {
   vector<double> out;
+  out.reserve(a.size());  
   for (size_t i = 0; i < a.size(); i++) {
     out.push_back(a[i] - b[i]);
   }
@@ -72,7 +75,7 @@ bool operator&&(const vector<double> &a, const vector<double> &b) {
   return !(1 - cos > EPS_1);
 }
 
-std::istream &operator<<(std::stringstream &s, vector<double> &a) {
+std::stringstream &operator<<(std::stringstream &s, vector<double> &a) {
   for (size_t i = 0; i < a.size(); i++) {
     s << a[i];
     if (i != a.size() - 1) s << " ";
@@ -81,7 +84,7 @@ std::istream &operator<<(std::stringstream &s, vector<double> &a) {
   return s;
 }
 
-std::ostream &operator>>(std::stringstream &s, vector<double> &a) {
+std::stringstream &operator>>(std::stringstream &s, vector<double> &a) {
   unsigned long long n;
   double buf;
   a.clear();
@@ -95,6 +98,7 @@ std::ostream &operator>>(std::stringstream &s, vector<double> &a) {
 
 vector<double> reverse(vector<double> &a) {
   vector<double> out;
+  out.reserve(a.size());  
   size_t size_of_a = a.size();
 
   for (size_t i = 0; i < size_of_a; i++) {
@@ -107,6 +111,7 @@ vector<double> reverse(vector<double> &a) {
 
 vector<int> operator|(const vector<int> &a, const vector<int> &b) {
   vector<int> out;
+  out.reserve(a.size());  
   for (size_t i = 0; i < a.size(); i++) {
     out.push_back(a[i] | b[i]);
   }
@@ -115,6 +120,7 @@ vector<int> operator|(const vector<int> &a, const vector<int> &b) {
 
 vector<int> operator&(const vector<int> &a, const vector<int> &b) {
   vector<int> out;
+  out.reserve(a.size());  
   for (size_t i = 0; i < a.size(); i++) {
     out.push_back(a[i] & b[i]);
   }
