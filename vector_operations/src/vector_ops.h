@@ -9,7 +9,7 @@ const double EPS_1 = 1e-7;
 
 vector<double> operator+(const vector<double> &a, const vector<double> &b) {
   vector<double> out;
-  out.reserve(a.size());
+  out.reserve(a.size());    
   for (size_t i = 0; i < a.size(); i++) {
     out.push_back(a[i] + b[i]);
   }
@@ -75,7 +75,7 @@ bool operator&&(const vector<double> &a, const vector<double> &b) {
   return !(1 - cos > EPS_1);
 }
 
-std::stringstream &operator<<(std::stringstream &s, vector<double> &a) {
+std::ostream &operator<<(std::ostream &s, vector<double> &a) {
   for (size_t i = 0; i < a.size(); i++) {
     s << a[i];
     if (i != a.size() - 1) s << " ";
@@ -84,7 +84,7 @@ std::stringstream &operator<<(std::stringstream &s, vector<double> &a) {
   return s;
 }
 
-std::stringstream &operator>>(std::stringstream &s, vector<double> &a) {
+std::istream &operator>>(std::istream &s, vector<double> &a) {
   unsigned long long n;
   double buf;
   a.clear();
