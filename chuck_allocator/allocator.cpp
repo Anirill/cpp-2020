@@ -79,7 +79,7 @@ bool check_copy() {
     if (a[i]->y != 1000 + i) return false;  // checking for valid data
   }
 
-  if (a[1] - a[0] != 8) return false;
+  if (a[1] - a[0] != 8) return false;  // if used different chunks
 
   alloc2.~Allocator();  // destruct alloc2
 
