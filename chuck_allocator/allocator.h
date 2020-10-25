@@ -27,12 +27,14 @@ struct Chunk {
         if (this->start != NULL) delete[] this->start;
         if (this->next != NULL) {
             delete this->next; 
-            std::cout << "Deallocating chunk!\n"; 
-        } 
+            this->next = NULL;
+            //std::cout << "Deallocating chunkC!\n"; 
+        }  
+        //std::cout << "Deallocating chunkC!\n";       
     }
 
     char* memory_request(const size_t size) {
-
+        if (size > BLOCK_SIZE) return NULL;
         if (size <= this->remainder) {
             std::cout << "size ok! \n";
             this->current += size;
@@ -53,6 +55,7 @@ struct Chunk {
 
 template<typename T>
 class Allocator {
+    size_t *chunk_counter;
     Chunk *chunks;
 public:
     using size_type = std::size_t;
@@ -65,16 +68,23 @@ public:
     template<class U> 
     struct rebind { typedef Allocator<U> other; };
 
-    Allocator () : chunks(NULL) {;}
+    Allocator () { chunks = NULL; chunk_counter = new size_t(0); }
 
-    Allocator (const Allocator &a) : chunks(a.chunks) {;}
+    Allocator (const Allocator &a) : chunks(a.chunks), chunk_counter(a.chunk_counter) {
+        *this->chunk_counter += 1;
+        std::cout << "CC: " << *this->chunk_counter << "\n";
+    }
 
-    ~Allocator () {
-        chunks->~Chunk();
-        if (chunks != NULL) {
-            delete chunks;
-            std::cout << "Deallocating chunk!\n";
+    ~Allocator () {            
+        std::cout << "D CC: " << *this->chunk_counter << "\n";
+        if(*this->chunk_counter == 1) {
+            if (chunks != NULL) {
+                std::cout << "Deallocating chunk!\n";
+                chunks->~Chunk();
+                delete chunks;                
+            }            
         }
+        else if (*this->chunk_counter > 0) *this->chunk_counter -= 1;
     }
 
     template <typename ... Args>
@@ -88,7 +98,12 @@ public:
     };
 
     T* allocate (const size_t size) {
-        if (chunks == NULL) { chunks = new Chunk; }        
+        //std::cout << "Allocate: " << chunks << "\n";
+        if (chunks == NULL) { 
+            chunks = new Chunk; 
+            *chunk_counter = 1;
+            std::cout << "CC: " << *chunk_counter << "\n";
+        }        
         return (T*) chunks->memory_request(size * sizeof(T));
     };
 
@@ -97,23 +112,13 @@ public:
     Allocator& operator= (Allocator const &a) {
         if(this != &a) {
             Allocator tmp(a);
-            //this = &tmp;
-            std::swap(tmp);
+            this = &tmp;
         }
         return *this;
-        // ----  ;
     };
 
     size_t max_size () {
         return BLOCK_SIZE;
-    }
-
-
-    
-private:
-    
-    //struct Chunk;
-  
-    
+    }    
 };
 }

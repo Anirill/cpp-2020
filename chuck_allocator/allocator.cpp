@@ -1,65 +1,102 @@
 #include "allocator.h"
 #include <vector>
+//#include <memory>
 #include <iostream>
 
 using namespace task;
-class A {
-    
+class A {    
 public:
     int x;
-    A (int x, int y) { /*std::cout << x << " " << y << "\n";*/ this->x = x;} 
-    ~A () { /*std::cout << "~" << "\n";*/}
+    int y;
+    A (int x, int y) { this->x = x; this->y = y;} 
+    ~A () {;}
 };
 
-int main()
-{
-    Allocator<A> alloc;
-    Allocator<A> alloc2;
+bool check_int_array () {  
     Allocator<int> allint;
-    alloc2 = alloc;
-    A* a[20];
 
     int *arr;
     int *arr2;
     int *arr3;
-    arr = allint.allocate(500);
+
+    arr = allint.allocate(500);  // chunk is 2048b i.e. 512 * sizeof(int)
     arr2 = allint.allocate(500);
     arr3 = allint.allocate(10);
-    std::cout << "Adress of arr1: " << arr << "\n";   // goes to 1st chunk
-    std::cout << "Adress of arr2: " << arr2 << "\n";  // goes to 2nd chunk
-    std::cout << "Adress of arr3: " << arr3 << "\n";  // goes to 1st chunk
-    arr[9] = 1;
-    arr2[9] = 2;
-    arr3[9] = 3;
-    arr[499] = 10;
-    arr2[499] = 20;
-    std::cout << " 1 = " << arr[9] << "\n";
-    std::cout << " 2 = " << arr2[9] << "\n";
-    std::cout << " 3 = " << arr3[9] << "\n";
-    std::cout << "10 = " << arr[499] << "\n";
-    std::cout << "20 = " << arr2[499] << "\n";
-       
-    std::vector<A, Allocator<A>> vec;
-    for (int i = 0; i < 512; i++) vec.push_back(A(i, 2 * i));
-    std::cout << "vec/[511/] = " << vec[511].x << "\n";
-    for (int i = 0; i < 20; i++) 
-    {
-        if(i % 2) a[i] = alloc.allocate(1);
-        else a[i] = alloc2.allocate(1);
-        alloc.construct(a[i], i, 10);
+
+    if (arr3 - arr > 0x0800 || arr3 - arr < 0) return false;  // arr3 goes to 1st chunk
+    for (int i = 0; i < 10; i++) arr3[i] = 1000 * i; // filling arrays
+    for (int i = 0; i < 500; i++) {
+        arr[i] = i;
+        arr2[i] = i + 1000;
     }
 
-    std::cout << "a/[19/] = " << a[19]->x << "\n";
+    for (int i = 0; i < 10; i++) {  
+        if(arr3[i] != 1000 * i) return false;  // checking for valid data
+    }
+    for (int i = 0; i < 500; i++) {
+        if(arr[i] != i) return false;
+        if(arr[i] != i + 1000) return false;
+    }
+    return true;
+}
+
+
+bool check_vector () {
+    std::vector<A, Allocator<A>> vec;
+
+    for (int i = 0; i < 256; i++) vec.push_back(A(i, 1000 + i)); // vector reallocates itself requiring 2nd chunk
+
+    for (int i = 0; i < 256; i++) {
+        if(vec[i].x != i) return false;         // checking for valid data
+        if(vec[i].y != 1000 + i) return false;  // checking for valid data        
+    }
+    return true;
+}
+
+
+bool check_copy () {
+    Allocator<A> alloc;
+    A* a[20];
+
+    a[0] = alloc.allocate(1);     // allocating 1st chunk
+
+    Allocator<A> alloc2 = alloc;  // copy alloc
+
+    for (int i = 1; i < 20; i++) 
+    {
+        if(i % 2) a[i] = alloc.allocate(1);  // allocating with alloc
+        else a[i] = alloc2.allocate(1);      // allocating with alloc2
+        alloc.construct(a[i], i, 1000 + i);  // filling array
+    }
+
+    for (int i = 0; i < 20; i++) {
+        if(a[i]->x != i) return false;         // checking for valid data
+        if(a[i]->y != 1000 + i) return false;  // checking for valid data      
+    }
+
+    if(a[1] - a[0] != 8) return false;
+
+    alloc2.~Allocator();   // destruct alloc2
+
+    for (int i = 0; i < 20; i++) {
+        if(a[i]->x != i) return false;         // checking for valid data after destructing one of the allocators
+        if(a[i]->y != 1000 + i) return false;  // checking for valid data after destructing one of the allocators      
+    }
+
+    return true;
+}
+
+
+int main()
+{   
+    if(check_int_array) std::cout << "Int array check valid!\n";
+    else std::cout << "Int array check failed!\n";    
     
-    //std::cout << vec2[1022].x << "\n";
-    std::cout << " arr/[9/] = " << a[9]->x << "\n";
-    std::cout << " &arr/[9/] = " << a[9] << "\n";
+    if(check_vector) std::cout << "Vector check valid!\n";
+    else std::cout << "Vector check failed!\n";    
     
-    std::cout << " arr/[9/] = " << a[10]->x << "\n";
-    std::cout << " &arr/[9/] = " << a[10] << "\n";
-    
-    //vec.push_back(A(3, 4));
-    
+    if(check_copy) std::cout << "Copy check valid!\n";
+    else std::cout << "Copy check failed!\n";   
     
 
     return 0;
