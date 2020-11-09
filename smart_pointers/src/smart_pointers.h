@@ -6,6 +6,7 @@ namespace task {
 template <class T>
 class UniquePtr {
     // Your code goes here...
+    
 };
 
 template <class T>
