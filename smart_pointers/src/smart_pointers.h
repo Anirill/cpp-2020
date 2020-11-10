@@ -1,6 +1,5 @@
 #pragma once
 
-
 namespace task {
 
 template <class T>
@@ -8,288 +7,243 @@ class WeakPtr;
 
 template <class T>
 class UniquePtr {
-    T *ptr;
-public:
-    explicit UniquePtr(T* p) noexcept : ptr(p) {;};
+  T* ptr;
 
-    UniquePtr(UniquePtr& other) = delete;
-    UniquePtr(UniquePtr&& other) noexcept : ptr(nullptr) {
-        std::swap(ptr, other.ptr);
-    };
+ public:
+  // ptr constructor
+  explicit UniquePtr(T* p) noexcept : ptr(p) { ; };
 
-    ~UniquePtr() {
-        delete ptr;
-    };
-    
-    UniquePtr& operator= (UniquePtr& other) = delete;
-    UniquePtr& operator= (UniquePtr&& other) noexcept {
-        if (*this == other) return *this;
-        delete ptr;
-        ptr = nullptr;
-        std::swap(ptr, other.ptr);
-        return *this;
-    };
+  // unique constructor
+  UniquePtr(UniquePtr& other) = delete;
+  UniquePtr(UniquePtr&& other) noexcept : ptr(nullptr) {
+    std::swap(ptr, other.ptr);
+  };
 
-    T* get() const {
-        return ptr;
-    }
+  // destructor
+  ~UniquePtr() { delete ptr; };
 
-    T& operator* () {
-        return *ptr;
-    }
+  // operators
+  UniquePtr& operator=(UniquePtr& other) = delete;
+  UniquePtr& operator=(UniquePtr&& other) noexcept {
+    if (*this == other) return *this;
+    delete ptr;
+    ptr = nullptr;
+    std::swap(ptr, other.ptr);
+    return *this;
+  };
 
-    T* operator-> () {
-        return ptr;
-    }
+  T& operator*() { return *ptr; }
+  T* operator->() { return ptr; }
 
-    bool operator== (const UniquePtr<T>& other) {
-        return (this->ptr == other.ptr);
-    }
+  bool operator==(const UniquePtr<T>& other) {
+    return (this->ptr == other.ptr);
+  }
 
+  // standart methods
+  T* release() noexcept {
+    T* result = nullptr;
+    std::swap(result, ptr);
+    return result;
+  }
 
-    T* release() noexcept {
-        T* result = nullptr;
-        std::swap(result, ptr);
-        return result;
-    }
+  void swap(UniquePtr& other) noexcept { std::swap(ptr, other.ptr); }
 
-    void swap(UniquePtr& other) noexcept {
-        std::swap(ptr, other.ptr);
-    }
+  T* get() const { return ptr; }
 
-    void reset() {
-        T* tmp = release();
-        delete tmp;
-    }
+  void reset() {
+    T* tmp = release();
+    delete tmp;
+  }
 };  // unique ptr
 
 template <class T>
 struct ControlBlock {
-    T* ptr;
-    size_t sp_count;
-    size_t wp_count;
+  T* ptr;
+  size_t sp_count;
+  size_t wp_count;
 
-    ControlBlock() : ptr(nullptr), sp_count(0), wp_count(0) {};
-    ControlBlock(T* p, size_t sp_c, size_t wp_c) : ptr(p), sp_count(sp_c), wp_count(wp_c) {};    
+  ControlBlock() : ptr(nullptr), sp_count(0), wp_count(0){};
+  ControlBlock(T* p, size_t sp_c, size_t wp_c)
+      : ptr(p), sp_count(sp_c), wp_count(wp_c){};
 };
 
 template <class T>
-class SharedPtr {    
-public:    
-    ControlBlock<T> *cb;
+class SharedPtr {
+ public:
+  ControlBlock<T>* cb;
 
-    // ptr constructor
+  // ptr constructor
 
-    explicit SharedPtr(T* p) : cb(new ControlBlock<T>(p, 1, 0)) {
-        //cb = new ControlBlock<T>(p, 1, 0);
-    }    
+  explicit SharedPtr(T* p) : cb(new ControlBlock<T>(p, 1, 0)) {
+    // cb = new ControlBlock<T>(p, 1, 0);
+  }
 
-    SharedPtr() : cb(new ControlBlock<T>(nullptr, 1, 0)) {
-        //cb = new ControlBlock<T>(nullptr, 1, 0);  
+  SharedPtr() : cb(new ControlBlock<T>(nullptr, 1, 0)) {
+    // cb = new ControlBlock<T>(nullptr, 1, 0);
+  }
+
+  // shared constructor
+
+  SharedPtr(SharedPtr& other) : cb(other.cb) { ++cb->sp_count; }
+
+  SharedPtr(const SharedPtr& other) : cb(other.cb) { ++cb->sp_count; }
+
+  SharedPtr(SharedPtr&& other) {
+    cb = std::move(other.cb);
+    other.cb = new ControlBlock<T>();
+  }
+
+  // weak constructor
+
+  SharedPtr(WeakPtr<T>& other) : cb(other.cb) { ++cb->sp_count; }
+
+  SharedPtr(const WeakPtr<T>& other) : cb(other.cb) { ++cb->sp_count; }
+
+  // destructor
+
+  ~SharedPtr() {
+    if (cb->sp_count == 1) {
+      delete cb->ptr;
+      if (cb->wp_count == 0) delete cb;
     }
+    --cb->sp_count;
+  }
 
-    // shared constructor
+  // operator =
 
-    SharedPtr(SharedPtr& other) : cb(other.cb) {
-        ++cb->sp_count;
-    }
+  SharedPtr& operator=(const SharedPtr& other) {
+    if (this == &other || cb == other.cb) return *this;
+    this->~SharedPtr();
+    cb = other.cb;
+    ++cb->sp_count;
+    return *this;
+  }
 
-    SharedPtr(const SharedPtr& other) : cb(other.cb) {
-        ++cb->sp_count;
-    }
+  SharedPtr& operator=(SharedPtr&& other) noexcept {
+    if (this == &other || cb == other.cb) return *this;
+    SharedPtr<T>(std::move(other)).swap(*this);
+    return *this;
+  };
 
-    SharedPtr(SharedPtr&& other) {
-        cb = std::move(other.cb);
-        other.cb = new ControlBlock<T>();
-    }
+  // other operators
 
-    // weak constructor
+  T& operator*() { return *(cb->ptr); }
 
-    SharedPtr(WeakPtr<T>& other) : cb(other.cb) {
-        ++cb->sp_count;
-    }
+  T* operator->() { return cb->ptr; }
 
-    SharedPtr(const WeakPtr<T>& other) : cb(other.cb) {
-        ++cb->sp_count;
-    }
+  bool operator==(const SharedPtr<T>& other) { return (this->cb == other.cb); }
 
-    // destructor
+  // standart methods
 
-    ~SharedPtr() {
-        if(cb->sp_count == 1) {
-            delete cb->ptr;
-            if(cb->wp_count == 0)
-                delete cb;
-        }
-        --cb->sp_count;        
-    }
+  T* get() const { return cb->ptr; }
 
-    // operator = 
+  T* release() noexcept {
+    ControlBlock<T>* buf = nullptr;
+    std::swap(cb, buf);
+    --buf->sp_count;
+    return buf->ptr;
+  }
 
-    SharedPtr& operator= (const SharedPtr& other) {
-        if (this == &other || cb == other.cb) 
-            return *this;
-        this->~SharedPtr();
-        cb = other.cb;
-        ++cb->sp_count;
-        return *this;
-    }
+  void swap(SharedPtr<T>& other) noexcept { std::swap(other.cb, this->cb); }
 
-    SharedPtr& operator= (SharedPtr&& other) noexcept {
-        if (this == &other || cb == other.cb) 
-            return *this;
-        SharedPtr<T>(std::move(other)).swap(*this);
-        return *this;
-    };
+  void reset() { SharedPtr<T>().swap(*this); }
 
-    // other operators
+  template <class Y>
+  void reset(Y* ptr) {
+    SharedPtr<Y>(ptr).swap(*this);
+    return;
+  };
 
-    T& operator* () {
-        return *(cb->ptr);
-    }
-
-    T* operator-> () {
-        return cb->ptr;
-    }
-
-    bool operator== (const SharedPtr<T>& other) {
-        return (this->cb == other.cb);
-    }
-
-    // standart methods
-
-    T* get() const {
-        return cb->ptr;
-    }
-
-    T* release() noexcept {
-        ControlBlock<T> *buf = nullptr;
-        std::swap(cb, buf);
-        --buf->sp_count;
-        return buf->ptr;
-    }
-
-    void swap(SharedPtr<T>& other) noexcept {
-        std::swap(other.cb, this->cb);
-    }
-
-    void reset() {
-        SharedPtr<T>().swap(*this);
-    }
-
-    template<class Y>
-    void reset(Y* ptr) {        
-        SharedPtr<Y>(ptr).swap(*this);
-        return;
-    };
-
-    size_t use_count() {
-        return cb->sp_count;
-    }
+  size_t use_count() { return cb->sp_count; }
 };  // shared ptr
 
 template <class T>
 class WeakPtr {
-    //ControlBlock<T> *cb;
-public:
-    ControlBlock<T> *cb;
+  // ControlBlock<T> *cb;
+ public:
+  ControlBlock<T>* cb;
 
-    // ptr constructor
+  // ptr constructor
 
-    WeakPtr() :cb(new ControlBlock<T>(nullptr, 0, 0)) {;}
-    explicit WeakPtr(T* p) : cb(new ControlBlock<T>(p, 0, 1)) {;}        
+  WeakPtr() : cb(new ControlBlock<T>(nullptr, 0, 0)) { ; }
+  explicit WeakPtr(T* p) : cb(new ControlBlock<T>(p, 0, 1)) { ; }
 
-    // weak constructor
+  // weak constructor
 
-    WeakPtr(WeakPtr& other) : cb(other.cb) {
-        ++cb->wp_count;
+  WeakPtr(WeakPtr& other) : cb(other.cb) { ++cb->wp_count; }
+
+  WeakPtr(WeakPtr&& other) {
+    cb = std::move(other.cb);
+    other.cb = new ControlBlock<T>();
+    ++other.cb->wp_count;
+    ++cb->wp_count;
+  }
+
+  WeakPtr(const WeakPtr& other) : cb(other.cb) { ++cb->wp_count; }
+
+  // shared constructor
+
+  WeakPtr(const SharedPtr<T>& other) : cb(other.cb) { ++cb->wp_count; }
+
+  // destructor
+
+  ~WeakPtr() {
+    if (cb->wp_count == 0 && cb->sp_count == 0) {
+      delete cb;
     }
+    --cb->wp_count;
+  };
 
-    WeakPtr(WeakPtr&& other) {
-        cb = std::move(other.cb);
-        other.cb = new ControlBlock<T>();
-        ++other.cb->wp_count;
-        ++cb->wp_count;
-    }
+  // shared operator =
 
-    WeakPtr(const WeakPtr& other) : cb(other.cb) {
-        ++cb->wp_count;
-    }
+  WeakPtr& operator=(const SharedPtr<T>& other) {
+    cb = other.cb;
+    ++cb->wp_count;
+    return *this;
+  };
 
-    // shared constructor
+  WeakPtr& operator=(SharedPtr<T>& other) {
+    cb = other.cb;
+    ++cb->wp_count;
+    return *this;
+  };
 
-    WeakPtr(const SharedPtr<T>& other) : cb(other.cb) {
-        ++cb->wp_count;
-    }
+  // weak operator =
 
-    // destructor
+  WeakPtr& operator=(const WeakPtr<T>& other) {
+    if (this == & other || cb = other.cb) return *this;
+    cb = other.cb;
+    ++cb->wp_count;
+    return *this;
+  };
 
-    ~WeakPtr() {
-        if(cb->wp_count == 0 && cb->sp_count == 0) {
-            delete cb;
-        }
-        --cb->wp_count;
-    };
+  WeakPtr& operator=(WeakPtr<T>&& other) noexcept {
+    if (this == & other || cb = other.cb) return *this;
+    WeakPtr<T>(std::move(other)).swap(*this);
+    return *this;
+  };
 
-    // shared operator =
+  // standart methods
 
-    WeakPtr& operator= (const SharedPtr<T>& other) {
-        cb = other.cb;
-        ++cb->wp_count;
-        return *this;
-    };
+  void swap(WeakPtr& other) noexcept { std::swap(this->cb, other.cb); }
 
-    WeakPtr& operator= (SharedPtr<T>& other) {
-        cb = other.cb;
-        ++cb->wp_count;
-        return *this;
-    };
+  void reset() { WeakPtr<T>().swap(*this); }
 
-    // weak operator =
+  size_t use_count() {
+    if (cb == nullptr) return 0;
+    return cb->sp_count;
+  }
 
-    WeakPtr& operator= (const WeakPtr<T>& other) {
-        if (this == &other || cb = other.cb) 
-            return *this;
-        cb = other.cb;
-        ++cb->wp_count;
-        return *this;
-    };
+  bool expired() {
+    if (cb == nullptr || this->cb->sp_count == 0) return true;
+    return false;
+  }
 
-    WeakPtr& operator= (WeakPtr<T>&& other) noexcept {
-        if (this == &other || cb = other.cb) 
-            return *this;
-        WeakPtr<T>(std::move(other)).swap(*this);
-        return *this;
-    };
-
-    // standart methods
-
-    void swap(WeakPtr& other) noexcept {
-        std::swap(this->cb, other.cb);
-    }
-
-    void reset() {
-        WeakPtr<T>().swap(*this);
-    }
-
-    size_t use_count() {
-        if(cb == nullptr) 
-            return 0;
-        return cb->sp_count;
-    }
-
-    bool expired() {
-        if(cb == nullptr || this->cb->sp_count == 0)
-            return true;
-        return false;
-    }
-
-    SharedPtr<T> lock() noexcept {
-        return (expired() ? SharedPtr<T>() : SharedPtr<T>(*this));
-    }
-}; // weak ptr
+  SharedPtr<T> lock() noexcept {
+    return (expired() ? SharedPtr<T>() : SharedPtr<T>(*this));
+  }
+};  // weak ptr
 
 }  // namespace task
-
 
 #include "smart_pointers.tpp"
