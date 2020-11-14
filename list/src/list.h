@@ -227,16 +227,19 @@ public:
         }            
     }
 
-    list(const list& other, 
+    list(list& other,  // const does not work
          const Alloc& alloc = Alloc()
         ) : first(nullptr), 
             last(nullptr), 
             s(0), 
             _allocator(other._allocator) {
-        iterator it = other.cbegin();
+        //node_pointer it = &other.begin();
+        auto it = other.begin();
         for (size_type i = 0; i < other.size(); i++) {
+            //push_back(it->value);
+            //it = it->next;
             push_back(*it);
-            it++;
+            it++;            
         }        
     }
 
@@ -251,17 +254,36 @@ public:
     }
 
     //list& operator=(const list& other);
-    list& operator=(list&& other);
+    // list& operator=(list&& other);
+    // {  // using iterator???
+    //     this->clear();
+    //     this = list(std::move(other));
+    //     // this->_allocator = other.get_allocator();
+    //     // auto it = other.cbegin();
+    //     // for (size_type i = 0; i < other.size(); i++) {
+    //     //     push_back(it->value);
+    //     //     it++;
+    //     // }       
+    //     return *this;
+    // }
 
 
-    list& operator=(const list& other) {  // using iterator???
+    list& operator=( list& other) {  // using iterator???
         this->clear();
-        this->_allocator = other.get_allocator();
-        iterator it = other.begin();
+        auto it = other.begin();
         for (size_type i = 0; i < other.size(); i++) {
-            push_back(it->value);
-            it++;
-        }       
+            //push_back(it->value);
+            //it = it->next;
+            push_back(*it);
+            it++;            
+        }     
+        //*this = list(other);
+        // this->_allocator = other.get_allocator();
+        // auto it = other.cbegin();
+        // for (size_type i = 0; i < other.size(); i++) {
+        //     push_back(it->value);
+        //     it++;
+        // }       
         return *this;
     }
 
@@ -746,14 +768,17 @@ public:
         value_type value = value_type();
         while (s < count) {
             push_back(value);
-        }        
+        }    
+        while (s > count) {
+            pop_back();
+        }    
     };
 
     void swap(list& other) {
         if (_traits::propagate_on_container_swap::value)
             std::swap (_allocator, other._allocator);
         if (_node_traits::propagate_on_container_swap::value)
-            std::swap (_node_all, other._all);        
+            std::swap (_node_all, other._node_all);        
         //list *tmp = this;
         std::swap(first, other.first);
         std::swap(last, other.last);
@@ -761,6 +786,8 @@ public:
     };
 
     void swap(node_pointer a, node_pointer b) {
+        if(a == b || a == nullptr || b == nullptr)
+            return;
         value_type buf = a->value;
         a->value = b->value;
         b->value = buf;
@@ -777,23 +804,88 @@ public:
     }
 
 
-    void merge(list& other) {};
+    void merge(list& other) {
+        if(this == &other)
+            return;
+        auto it1 = begin();
+        //auto it2 = other.begin();
+
+        for (size_type i = 0; i < s + other.size(); i++) {
+            if(*it1 < other.front()) {
+                it1++;
+            }
+            else {
+                //it1++;
+                insert(it1, other.front());                
+                //it2++;
+                //other.pop_front();
+            }
+        }
+        
+
+    };
     //void splice(iterator pos, list& other);
     void remove(const T& value) {};
-    void reverse() {};
-    void unique() {};
 
-    void sort() {
-        if(first == last)
+    void unique() {
+        if(first == last || first == nullptr)
             return;        
         node_pointer a = first;
-        if (a == nullptr)
+        node_pointer b = a->next;
+        if (b == nullptr)
             return;
+        //value_type buf = a->value;
+        //node_pointer p = nullptr;
+
+        while(a != last || b != nullptr)
+        {                
+            //buf = a->value;
+            if(a->value == b->value){
+                a->next = b->next;
+                if(a->next != nullptr) 
+                    a->next->prev = a;
+                if(b == last)
+                    pop_back();
+                else
+                    delete_node(b);
+                b = a->next;
+                //std::swap(&it1, &it2);
+            }    
+            else {
+                a = a->next;
+                b = b->next;
+            }
+        }
+    };
+
+    void reverse() noexcept { 
+        //Node buf = Node();
+        node_pointer it1 = first;
+        node_pointer it2 = last;
+
+        for (size_type i = 0; i < s / 2; i++) {
+            swap(it1, it2);
+            it1 = it1->next;
+            it2 = it2->prev;
+        }
+        // buf.next = first->next;
+        // buf.prev = first->prev;
+
+        // first->next = last->prev;
+        // first->prev = last->next;         
+
+    };
+
+
+    void sort() {
+        if(first == last || first == nullptr)
+            return;        
+        node_pointer a = first;
         node_pointer b = a->next;
         if (b == nullptr)
             return;
         bool unsorted_flag = false;
-        int i = 0;
+
         // auto it1 = this->begin();
         // auto it2 = ++it1;
         // if (&it2 == nullptr)
@@ -828,7 +920,14 @@ public:
     };
 
     void splice(iterator pos, list& other) {
-        ;
+        auto it = other.begin();
+        for (size_type i = 0; i < other.size(); i++) {
+            //push_back(it->value);
+            //it = it->next;
+            insert(pos, *it);
+            it++;            
+        }    
+        
     };
 
 
