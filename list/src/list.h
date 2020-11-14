@@ -49,6 +49,11 @@ public:
             if (curr != NULL)
                 pr = curr->prev;
         };        
+        // explicit iterator_base(node_pointer c) : curr(c) {
+        //     if (curr != NULL)
+        //         pr = curr->prev;
+        // };        
+        
         iterator_base(const iterator_base& it) : curr(it.curr) {
             if (curr != NULL)
                 pr = curr->prev;;
@@ -69,10 +74,14 @@ public:
         }
 
         reference operator*() const {
+            // if (curr == nullptr)
+            //     return value_type();
             return curr->value;
         }
 
         pointer operator->() const {
+            if(curr == nullptr)
+                return nullptr;
             return &(curr->value);
         }
 
@@ -91,7 +100,7 @@ public:
 
         iterator_base& operator--() {
             if (curr != NULL) {
-                curr = curr->prev;
+                curr = curr->prev;                
             }
             else {
                 curr = pr;
@@ -181,23 +190,23 @@ public:
 
     };
 
-    list() : first(NULL), 
-             last(NULL), 
+    list() : first(nullptr), 
+             last(nullptr), 
              s(0), 
              _allocator(allocator_type()) {;}
 
     explicit list(
         const Alloc& alloc
-        ) : first(NULL), 
-            last(NULL), 
+        ) : first(nullptr), 
+            last(nullptr), 
             s(0), 
             _allocator(alloc) {;}; //   
 
     list(size_type count, 
          const_reference value, 
          const Alloc& alloc = Alloc()
-        ) : first(NULL), 
-            last(NULL), 
+        ) : first(nullptr), 
+            last(nullptr), 
             s(0), 
             _allocator(alloc) {
         for (size_type i = 0; i < count; i++) {
@@ -208,8 +217,8 @@ public:
     explicit list(
         size_type count, 
         const Alloc& alloc = Alloc()
-        ) : first(NULL), 
-            last(NULL), 
+        ) : first(nullptr), 
+            last(nullptr), 
             s(0), 
             _allocator(alloc) {
         value_type value = value_type();
@@ -220,13 +229,13 @@ public:
 
     list(const list& other, 
          const Alloc& alloc = Alloc()
-        ) : first(NULL), 
-            last(NULL), 
+        ) : first(nullptr), 
+            last(nullptr), 
             s(0), 
             _allocator(other._allocator) {
-        iterator it = other.begin();
+        iterator it = other.cbegin();
         for (size_type i = 0; i < other.size(); i++) {
-            push_back(it->value);
+            push_back(*it);
             it++;
         }        
     }
@@ -279,14 +288,18 @@ public:
     };
     iterator end(){
         //iterator it = iterator(back);
-        return iterator(last->next);
+        auto it = iterator(last);
+        ++it;
+        return it;
     };
 
     const_iterator cbegin() {
         return const_iterator(first);
     };
     const_iterator cend() {
-        return const_iterator(last->next);
+        auto it = const_iterator(last);
+        ++it;
+        return it;
     };
 
     reverse_iterator rbegin() {
@@ -515,11 +528,13 @@ public:
 
     void push_back(const T& value) {
         
-        if(last == NULL) {
+        if(last == nullptr) {
             last = &(emplace(this->cbegin(), value));    
             // if (last == NULL)
             //     this->s = 111;
             first = last;    
+            last->next = nullptr;
+            first->prev = nullptr;
         }
 
         //last->next = _traits::template rebind_alloc<Node>::allocate(1);
@@ -534,6 +549,7 @@ public:
             //_node_all.construct(last->next, value);        
             last->next->prev = last;
             last = last->next;
+            last->next = nullptr;
         }
         //std::printf("%d", s);
         //return;
@@ -544,12 +560,14 @@ public:
     }
 
     void push_back(T&& value){
-        if(last == NULL) {
+        if(last == nullptr) {
             //last = _node_all.allocate(1);
             //last->value = std::move(value);
             //last = (emplace_back(std::move(value)))->curr;
             last = &emplace(this->cbegin(), std::move(value));
             first = last;    
+            last->next = nullptr;
+            first->prev = nullptr;
         }
         else {            
             //last->next = _node_all.allocate(1);
@@ -557,20 +575,21 @@ public:
             emplace_back(std::move(value));
             last->next->prev = last;
             last = last->next;
+            last->next = nullptr;
         }
         this->s++;
         return;
     };
 
     void pop_back() { // last and first deallocate
-        if(last == NULL) {
+        if(last == nullptr) {
             return;
         }
         if (last == first) {
             delete_node(last);
             //_node_all.destroy(last);
             //_node_all.deallocate(last, 1);
-            last = first = NULL;        
+            last = first = nullptr;        
             this->s = 0;
             return;              
         }
@@ -584,7 +603,7 @@ public:
             //_node_all.destroy(last->next);
             //_node_all.deallocate(last->next, 1);
             delete_node(last->next);
-            last->next = NULL; 
+            last->next = nullptr; 
         }  
         this->s--;    
         return;        
@@ -598,13 +617,15 @@ public:
 
 
     void push_front(const T& value) {
-        if(first == NULL) {
+        if(first == nullptr) {
             //create_node(first, value);
             //first = (emplace_front(value))->curr;
             first = &emplace(this->cbegin(), value);
             //first = _node_all.allocate(1);
             //_node_all.construct(first, value);    
             last = first;    
+            last->next = nullptr;
+            first->prev = nullptr;
         }
         //first->prev = _traits::template rebind_alloc<Node>::allocate(1);
         //_traits::template rebind_alloc<Node>::construct(first->prev, value); 
@@ -617,6 +638,7 @@ public:
             //_node_all.construct(first->prev, value); 
             first->prev->next = first;
             first = first->prev;
+            first->prev = nullptr;
             //first->value = value_type(value);
         }
         this->s++;
@@ -624,12 +646,14 @@ public:
     };
 
     void push_front(T&& value) {
-        if(first == NULL) {
+        if(first == nullptr) {
             //first = _node_all.allocate(1);
             //first->value = std::move(value);
             //first = (emplace_front(std::move(value)))->curr;
             first = &emplace(this->cbegin(), std::move(value));
             last = first;    
+            last->next = nullptr;
+            first->prev = nullptr;
         }
         else {
             //first->prev = _node_all.allocate(1);
@@ -637,19 +661,20 @@ public:
             emplace_front(std::move(value));
             first->prev->next = first;
             first = first->prev;
+            first->prev = nullptr;
         }
         this->s++;
         return;
     };
 
     void pop_front() {
-        if(first == NULL)
+        if(first == nullptr)
             return;
         if (last == first) {
             delete_node(first);
             //_node_all.destroy(last);
             //_node_all.deallocate(last, 1);
-            last = first = NULL;        
+            last = first = nullptr;        
             this->s = 0;
             return;   
         }
@@ -664,7 +689,7 @@ public:
             //_node_all.destroy(first->prev);             
             //_node_all.deallocate(first->prev, 1);
             delete_node(first->prev);
-            first->prev = NULL;   
+            first->prev = nullptr; 
 
         }
         this->s--;
@@ -725,9 +750,9 @@ public:
     };
 
     void swap(list& other) {
-        if(_traits::propagate_on_container_swap::value)
+        if (_traits::propagate_on_container_swap::value)
             std::swap (_allocator, other._allocator);
-        if(_node_traits::propagate_on_container_swap::value)
+        if (_node_traits::propagate_on_container_swap::value)
             std::swap (_node_all, other._all);        
         //list *tmp = this;
         std::swap(first, other.first);
@@ -735,13 +760,72 @@ public:
         std::swap(s, other.s);
     };
 
+    void swap(node_pointer a, node_pointer b) {
+        value_type buf = a->value;
+        a->value = b->value;
+        b->value = buf;
+        // Node buf = Node();
+        // buf.next = a->next;
+        // buf.prev = a->prev;
+        // buf.value = a->value;
+        // a->next = b->next;
+        // a->prev = b->prev;
+        // a->value = b->value;
+        // b->next = buf.next;
+        // b->prev = buf.prev;
+        // b->value = buf.value;
+    }
+
 
     void merge(list& other) {};
     //void splice(iterator pos, list& other);
     void remove(const T& value) {};
     void reverse() {};
     void unique() {};
-    void sort() {};
+
+    void sort() {
+        if(first == last)
+            return;        
+        node_pointer a = first;
+        if (a == nullptr)
+            return;
+        node_pointer b = a->next;
+        if (b == nullptr)
+            return;
+        bool unsorted_flag = false;
+        int i = 0;
+        // auto it1 = this->begin();
+        // auto it2 = ++it1;
+        // if (&it2 == nullptr)
+        //     return;
+        //it2++;
+        do {
+            //if(*it2 < *it1){
+            unsorted_flag = false;
+            while(a != last || b != nullptr)
+            {                
+                if(a->value > b->value){
+                    //std::swap(&it1, &it2);
+                    list::swap(a, b);
+                    unsorted_flag = true;
+                }    
+                a = a->next;
+                b = b->next;
+
+                // it1++;
+                // it2++;
+                // if (&it2 == nullptr) {
+                //     it1 = this->begin();
+                //     it2 = ++it1;
+                // }
+            }
+            a = first;
+            b = a->next;
+
+            
+        }
+        while (unsorted_flag);      
+    };
 
     void splice(iterator pos, list& other) {
         ;
