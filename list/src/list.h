@@ -186,9 +186,6 @@ public:
 
     //~list(); // 
 
-    list(list&& other) {
-
-    };
 
     list() : first(nullptr), 
              last(nullptr), 
@@ -197,18 +194,18 @@ public:
 
     explicit list(
         const Alloc& alloc
-        ) : first(nullptr), 
-            last(nullptr), 
-            s(0), 
-            _allocator(alloc) {;}; //   
+    ) : first(nullptr), 
+        last(nullptr), 
+        s(0), 
+        _allocator(alloc) {;}; //   
 
     list(size_type count, 
          const_reference value, 
          const Alloc& alloc = Alloc()
-        ) : first(nullptr), 
-            last(nullptr), 
-            s(0), 
-            _allocator(alloc) {
+    ) : first(nullptr), 
+        last(nullptr), 
+        s(0), 
+        _allocator(alloc) {
         for (size_type i = 0; i < count; i++) {
             push_back(value);
         }    
@@ -217,24 +214,28 @@ public:
     explicit list(
         size_type count, 
         const Alloc& alloc = Alloc()
-        ) : first(nullptr), 
-            last(nullptr), 
-            s(0), 
-            _allocator(alloc) {
+    ) : first(nullptr), 
+        last(nullptr), 
+        s(0), 
+        _allocator(alloc) {
         value_type value = value_type();
         for (size_t i = 0; i < count; i++) {
             push_back(value);
         }            
     }
 
-    list(list& other,  // const does not work
+    ~list() {
+        clear();
+    }
+
+    list(const list& other,  // const does not work
          const Alloc& alloc = Alloc()
-        ) : first(nullptr), 
-            last(nullptr), 
-            s(0), 
-            _allocator(other._allocator) {
+    ) : first(nullptr), 
+        last(nullptr), 
+        s(0), 
+        _allocator(other._allocator) {
         //node_pointer it = &other.begin();
-        auto it = other.begin();
+        auto it = other.cbegin();
         for (size_type i = 0; i < other.size(); i++) {
             //push_back(it->value);
             //it = it->next;
@@ -243,9 +244,23 @@ public:
         }        
     }
 
-    ~list() {
-        clear();
-    }
+
+    list(list&& other
+    ) : first(std::move(other.first)), 
+        last(std::move(other.last)), 
+        s(std::move(other.s)), 
+        _allocator(std::move(other._allocator)) {
+        //node_pointer it = &other.begin();
+        // auto it = other.begin();
+        // for (size_type i = 0; i < other.size(); i++) {
+        //     //push_back(it->value);
+        //     //it = it->next;
+        //     push_back(std::move_if_noexcept(*it));
+        //     it++;            
+        // }    
+
+    };
+
 
     //Alloc get_allocator() const; //
 
@@ -254,23 +269,19 @@ public:
     }
 
     //list& operator=(const list& other);
-    // list& operator=(list&& other);
-    // {  // using iterator???
-    //     this->clear();
-    //     this = list(std::move(other));
-    //     // this->_allocator = other.get_allocator();
-    //     // auto it = other.cbegin();
-    //     // for (size_type i = 0; i < other.size(); i++) {
-    //     //     push_back(it->value);
-    //     //     it++;
-    //     // }       
-    //     return *this;
-    // }
 
 
-    list& operator=( list& other) {  // using iterator???
-        this->clear();
-        auto it = other.begin();
+    list& operator=(const list& other) {  // using iterator???
+        if (this == &other)
+            return *this;
+        //this->clear();
+        ~list();
+        if (_traits::propagate_on_container_copy_assignment::value)
+            _allocator = other._allocator;
+        allocator_type &allocator_to_use =
+            (_allocator == other._allocator) ? _allocator : other._allocator;
+
+        auto it = other.cbegin();
         for (size_type i = 0; i < other.size(); i++) {
             //push_back(it->value);
             //it = it->next;
@@ -286,6 +297,32 @@ public:
         // }       
         return *this;
     }
+
+    list& operator=(list&& other)
+        noexcept(noexcept(
+            _traits::propagate_on_container_move_assignment::value
+            || _traits::is_always_equal::value
+        ))
+    {  // using iterator???
+        //this->clear();
+        ~list();
+        first = std::move(other.first); 
+        last = std::move(other.last); 
+        s = std::move(other.s); 
+        if (_traits::propagate_on_container_move_assignment::value)
+            /// Important: copy, not move!
+            _allocator = other._allocator;
+
+        //*this = list(std::move_if_noexcept(other));
+        // this->_allocator = other.get_allocator();
+        // auto it = other.cbegin();
+        // for (size_type i = 0; i < other.size(); i++) {
+        //     push_back(it->value);
+        //     it++;
+        // }       
+        return *this;
+    }
+
 
 
     T& front() {
@@ -384,7 +421,7 @@ public:
     //     return false;
     // }
 
-    bool insert_base_m (iterator pos, const T&& value) {
+    bool insert_base_m (iterator pos, T&& value) {
         if (pos == this->end()) {
             //for (size_t i = 0; i < count; i++) {
                 push_back(std::move(value));
@@ -405,14 +442,14 @@ public:
     }
 
     iterator insert(const_iterator pos, const T& value) {
-        return insert(pos, 1, value);
+        return insert(pos, 1, std::forward(value));
         // if(insert_base_c(pos, value))
         //     return pos;
         // else            
         //     return emplace(pos, value);
     };
     iterator insert(iterator pos, const T& value) {
-        return insert(pos, 1, value);
+        return insert(pos, 1, std::forward(value));
         // if(insert_base_c(pos, value))
         //     return pos;
         // else                    
@@ -808,24 +845,102 @@ public:
         if(this == &other)
             return;
         auto it1 = begin();
-        //auto it2 = other.begin();
-
-        for (size_type i = 0; i < s + other.size(); i++) {
-            if(*it1 < other.front()) {
-                it1++;
-            }
-            else {
-                //it1++;
-                insert(it1, other.front());                
-                //it2++;
-                //other.pop_front();
-            }
-        }
+        size_type this_count = 0;
         
+        size_type other_count = 0;
+        size_type this_s = size();        
+        size_type other_s = other.size();
+
+        
+        auto it2 = other.begin();
+
+        for (size_type i = 0; i < this_s + other_s; i++) {
+
+            //if((*it1 < other.front() && this_count < s) )
+            if(&it1 != nullptr ){                
+                if(*it1 < other.front() && this_count < this_s) 
+                    //|| other_count == other_s) 
+                {
+                    ++it1;
+                    ++this_count;
+                }
+                //else if (!other.empty()) {
+                //else if (other_count < 568) {
+                else if (other_count < other_s) {
+                //else if (other.size() > 0) {
+                    //it1++;
+                    //insert(it1, std::move(other.front()));                
+                    // if(&it1 == nullptr)
+                    //     push_back(std::move(other.front()));
+                    // else
+                    //insert(it1, std::move(*it2));                
+                    insert(it1, std::move(*it2));        
+                    s++;        
+                    ++it2;
+                    //other.pop_front();
+                    ++other_count;
+                }
+            }
+            //else if (!other.empty()) {
+            //else if  (other_count < 568)  {
+            else if (other_count < other_s) {
+                
+                //push_back(std::move(other.front()));
+                push_back(std::move(*it2));
+                ++it2;
+                //other.pop_front();
+                ++other_count;
+            }
+            
+        }  
+        //other.clear();
 
     };
     //void splice(iterator pos, list& other);
-    void remove(const T& value) {};
+    void remove(const T& value) {
+        while(front() == value) {
+            pop_front();            
+        }
+        auto it = begin();
+        node_pointer prev = nullptr;
+        while(&it != last) {
+            if(*it == value) {
+                prev = (&it)->prev;
+                if(prev != nullptr) {
+                    prev->next = (&it)->next;
+                    if(prev->next != nullptr) {
+                        prev->next->prev = prev;
+                    }
+                }
+                delete_node(&it);               
+                s--;
+            }
+            ++it;
+        }
+        if(this->last->value == value)
+            pop_back();
+    };
+
+    value_type get_element(size_type n) {  // debug purpose
+        auto it = begin(); 
+        for (size_type i = 0; i < n; ++i)
+            ++it;
+        return *it;
+    };
+
+    node_pointer get_node(size_type n) {  // debug purpose
+        auto it = begin(); 
+        for (size_type i = 0; i < n; ++i)
+            ++it;
+        return &it;
+    };
+
+    node_pointer get_node_minus(size_type n) {  // debug purpose
+        auto it = end(); 
+        for (size_type i = 0; i < s - n; ++i)
+            --it;
+        return &it;
+    };
 
     void unique() {
         if(first == last || first == nullptr)
@@ -846,8 +961,10 @@ public:
                     a->next->prev = a;
                 if(b == last)
                     pop_back();
-                else
+                else {
                     delete_node(b);
+                    s--;
+                }
                 b = a->next;
                 //std::swap(&it1, &it2);
             }    
@@ -921,12 +1038,18 @@ public:
 
     void splice(iterator pos, list& other) {
         auto it = other.begin();
-        for (size_type i = 0; i < other.size(); i++) {
+        size_type other_s = other.size();
+        for (size_type i = 0; i < other_s; i++) {
             //push_back(it->value);
             //it = it->next;
+
             insert(pos, *it);
             it++;            
         }    
+        other.clear();
+        // for (size_type i = 0; i < other_s; i++) {
+        //     other.pop_back();
+        // }
         
     };
 
@@ -964,6 +1087,25 @@ private:
             //value = _traits::allocate(1);
             //_allocator.construct(value, x);
         };
+        Node(T &&x) : next(NULL), prev(NULL) {            
+            value = std::move(x);
+            //value = _traits::allocate(1);
+            //_allocator.construct(value, x);
+        };
+        Node(Node &other
+            ) : next(other.next), 
+                prev(other.prev),
+                value(other.value)
+        {};
+        Node(Node &&other
+            ) : next(std::move(other.next)), 
+                prev(std::move(other.prev)),
+                value(std::move(other.value))
+        {                        
+            //value = _traits::allocate(1);
+            //_allocator.construct(value, x);
+        };
+        
         ~Node() {
             value.~value_type();
             //_allocator.destroy(value);
