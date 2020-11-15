@@ -45,10 +45,12 @@ public:
         using iterator_category = std::bidirectional_iterator_tag;
 
         iterator_base() = delete;
+
         explicit iterator_base(node_pointer c) : curr(c) {
             if (curr != NULL)
                 pr = curr->prev;
         };        
+
         // explicit iterator_base(node_pointer c) : curr(c) {
         //     if (curr != NULL)
         //         pr = curr->prev;
@@ -218,9 +220,21 @@ public:
         last(nullptr), 
         s(0), 
         _allocator(alloc) {
-        value_type value = value_type();
+        //value_type value = value_type();
         for (size_t i = 0; i < count; i++) {
-            push_back(value);
+            if(last == nullptr) {
+                last = &emplace(this->cbegin());
+                first = last;    
+                last->next = nullptr;
+                first->prev = nullptr;
+            }
+            else {            
+                emplace_back();
+                // last->next->prev = last;
+                // last = last->next;
+                // last->next = nullptr;
+            }
+            this->s++;
         }            
     }
 
@@ -228,17 +242,18 @@ public:
         clear();
     }
 
-    list(const list& other,  // const does not work
+    list(list& other,  // const does not work
          const Alloc& alloc = Alloc()
     ) : first(nullptr), 
         last(nullptr), 
         s(0), 
         _allocator(other._allocator) {
         //node_pointer it = &other.begin();
-        auto it = other.cbegin();
+        auto it = other.begin();
         for (size_type i = 0; i < other.size(); i++) {
             //push_back(it->value);
             //it = it->next;
+            
             push_back(*it);
             it++;            
         }        
@@ -246,10 +261,15 @@ public:
 
 
     list(list&& other
-    ) : first(std::move(other.first)), 
+    ) noexcept 
+        : first(std::move(other.first)), 
         last(std::move(other.last)), 
         s(std::move(other.s)), 
-        _allocator(std::move(other._allocator)) {
+        _allocator(std::move(other._allocator)) 
+        {   
+            
+        // if (_traits::propagate_on_container_copy_assignment::value)
+        //     _allocator = std::move(other._allocator);
         //node_pointer it = &other.begin();
         // auto it = other.begin();
         // for (size_type i = 0; i < other.size(); i++) {
@@ -281,12 +301,16 @@ public:
         allocator_type &allocator_to_use =
             (_allocator == other._allocator) ? _allocator : other._allocator;
 
+        
+
         auto it = other.cbegin();
         for (size_type i = 0; i < other.size(); i++) {
             //push_back(it->value);
             //it = it->next;
-            push_back(*it);
+            emplace_back(std::forward(*it));
+            //push_back(std::forward(*it));
             it++;            
+            s++;
         }     
         //*this = list(other);
         // this->_allocator = other.get_allocator();
@@ -304,20 +328,36 @@ public:
             || _traits::is_always_equal::value
         ))
     {  // using iterator???
-        //this->clear();
-        ~list();
+        this->clear();
+        //~list();
         first = std::move(other.first); 
         last = std::move(other.last); 
         s = std::move(other.s); 
         if (_traits::propagate_on_container_move_assignment::value)
-            /// Important: copy, not move!
+            /// Important: copy, not move!            
             _allocator = other._allocator;
-
+        // auto it = other.begin();
+        // size_type other_s = other.size();
+        // for (size_t i = 0; i < other_s; i++) {
+        //     if(last == nullptr) {
+        //         last = &emplace(this->cbegin(), std::move(it->value));
+        //         first = last;    
+        //         last->next = nullptr;
+        //         first->prev = nullptr;
+        //     }
+        //     else {            
+        //         emplace_back(std::move(it->value));
+        //         last->next->prev = last;
+        //         last = last->next;
+        //         last->next = nullptr;
+        //     }
+        //     this->s++;
+        // }       
         //*this = list(std::move_if_noexcept(other));
         // this->_allocator = other.get_allocator();
-        // auto it = other.cbegin();
+        
         // for (size_type i = 0; i < other.size(); i++) {
-        //     push_back(it->value);
+        //     push_back(std::move(it->value));
         //     it++;
         // }       
         return *this;
@@ -390,7 +430,7 @@ public:
     }
 
     bool empty() const {
-        return (first == NULL && last == NULL);
+        return (this->s == 0 || (first == NULL && last == NULL));
     }
 
     void clear() {        
@@ -442,6 +482,7 @@ public:
     }
 
     iterator insert(const_iterator pos, const T& value) {
+        //value.action = "ic&";
         return insert(pos, 1, std::forward(value));
         // if(insert_base_c(pos, value))
         //     return pos;
@@ -449,13 +490,15 @@ public:
         //     return emplace(pos, value);
     };
     iterator insert(iterator pos, const T& value) {
-        return insert(pos, 1, std::forward(value));
+        //value.action = "ii&";
+        return insert(pos, 1, value);
         // if(insert_base_c(pos, value))
         //     return pos;
         // else                    
         //     return emplace(pos, value);
     };
     iterator insert(const_iterator pos, T&& value){
+        //value.action = "ic&&";
         if(insert_base_m(pos, std::move(value)))
             return pos;            
         else {
@@ -472,6 +515,7 @@ public:
               
     }    
     iterator insert(iterator pos, T&& value){
+        //value.action = "ii&&";
         if(insert_base_m(pos, std::move(value)))
             return pos;
         else {        
@@ -504,13 +548,16 @@ public:
     iterator insert(iterator pos, size_t count, const T& value){
         if (pos == this->end()) {
             for (size_t i = 0; i < count; i++) {
-                push_back(value);
+                //emplace_back(std::forward(value));
+                emplace_back(value);
+                s++;
                 //pos++;
             }            
         }
         else if (pos == this->begin()) {
             for (size_t i = 0; i < count; i++) {
-                push_front(value);
+                emplace_front(value);
+                s++;
                 //pos++;
             }     
         }
@@ -577,7 +624,7 @@ public:
     //     return;
     // }
 
-    void delete_node(Node* &p) {
+    void delete_node(node_pointer &p) {
         _node_all.destroy(p);
         _node_all.deallocate(p, 1);
         return;
@@ -606,9 +653,9 @@ public:
             emplace_back(value);
             //last->next = _node_all.allocate(1);
             //_node_all.construct(last->next, value);        
-            last->next->prev = last;
-            last = last->next;
-            last->next = nullptr;
+            // last->next->prev = last;
+            // last = last->next;
+            // last->next = nullptr;
         }
         //std::printf("%d", s);
         //return;
@@ -623,7 +670,7 @@ public:
             //last = _node_all.allocate(1);
             //last->value = std::move(value);
             //last = (emplace_back(std::move(value)))->curr;
-            last = &emplace(this->cbegin(), std::move(value));
+            last = &emplace(this->cbegin(), std::move_if_noexcept(value));
             first = last;    
             last->next = nullptr;
             first->prev = nullptr;
@@ -631,10 +678,10 @@ public:
         else {            
             //last->next = _node_all.allocate(1);
             //last->next->value = std::move(value);
-            emplace_back(std::move(value));
-            last->next->prev = last;
-            last = last->next;
-            last->next = nullptr;
+            emplace_back(std::move_if_noexcept(value));
+            // last->next->prev = last;
+            // last = last->next;
+            // last->next = nullptr;
         }
         this->s++;
         return;
@@ -679,7 +726,7 @@ public:
         if(first == nullptr) {
             //create_node(first, value);
             //first = (emplace_front(value))->curr;
-            first = &emplace(this->cbegin(), value);
+            first = &emplace(this->cbegin(), std::forward(value));
             //first = _node_all.allocate(1);
             //_node_all.construct(first, value);    
             last = first;    
@@ -692,12 +739,12 @@ public:
        // _node_traits::construct(first->prev, value); 
         else {
             //create_node(first->prev, value);
-            emplace_front(value);
+            emplace_front(std::forward(value));
             //first->prev = _node_all.allocate(1);
             //_node_all.construct(first->prev, value); 
-            first->prev->next = first;
-            first = first->prev;
-            first->prev = nullptr;
+            // first->prev->next = first;
+            // first = first->prev;
+            // first->prev = nullptr;
             //first->value = value_type(value);
         }
         this->s++;
@@ -709,7 +756,7 @@ public:
             //first = _node_all.allocate(1);
             //first->value = std::move(value);
             //first = (emplace_front(std::move(value)))->curr;
-            first = &emplace(this->cbegin(), std::move(value));
+            first = &emplace(this->cbegin(), std::move_if_noexcept(value));
             last = first;    
             last->next = nullptr;
             first->prev = nullptr;
@@ -717,10 +764,10 @@ public:
         else {
             //first->prev = _node_all.allocate(1);
             //first->prev->value = std::move(value);
-            emplace_front(std::move(value));
-            first->prev->next = first;
-            first = first->prev;
-            first->prev = nullptr;
+            emplace_front(std::move_if_noexcept(value));
+            // first->prev->next = first;
+            // first = first->prev;
+            // first->prev = nullptr;
         }
         this->s++;
         return;
@@ -777,16 +824,32 @@ public:
         // else if (&pos == &this->end())
         //     emplace_back(std::forward<Args>(args)...);
         // else {
-            &pos = _node_all.allocate(1);
-            _node_all.construct(&pos, std::forward<Args>(args)...);
+        &pos = _node_all.allocate(1);
+        _node_all.construct(&pos, std::forward<Args>(args)...);
+            
         // }
         return iterator(&pos);
     };
 
+    // template<typename... Args> 
+    // inline void pass(Args&&...) {}
+    // struct pass {
+    //     template<typename ...A> pass(A...) {}
+    // };
+
     template <class... Args>
-    void emplace_back(Args&&... args) {
-        last->next = _node_all.allocate(1);
-        _node_all.construct(last->next, std::forward<Args>(args)...);
+    inline void emplace_back (Args&&... args) noexcept {
+        // size_type arg_size = sizeof...(args);
+        // if (arg_size == 0)
+        //     ++arg_size;
+       // for (auto i = 0; i < arg_size; i++){
+            last->next = _node_all.allocate(1);
+            //pass{ ((_node_all.construct(last->next, std::forward<Args>(args))), 1)...};
+            _node_all.construct(last->next, std::forward<Args>(args)...);
+            last->next->prev = last;
+            last = last->next;
+            last->next = nullptr;
+       // }
         return;
     };
 
@@ -794,6 +857,9 @@ public:
     void emplace_front(Args&&... args) {
         first->prev = _node_all.allocate(1);
         _node_all.construct(first->prev, std::forward<Args>(args)...);
+        first->prev->next = first;
+        first = first->prev;
+        first->prev = nullptr;
         return;
     };
 
@@ -822,12 +888,12 @@ public:
         std::swap(s, other.s);
     };
 
-    void swap(node_pointer a, node_pointer b) {
+    void swap(node_pointer & a, node_pointer &b) {
         if(a == b || a == nullptr || b == nullptr)
             return;
-        value_type buf = a->value;
-        a->value = b->value;
-        b->value = buf;
+        value_type buf = std::move(a->value);
+        a->value =  std::move(b->value);
+        b->value =  std::move(buf);
         // Node buf = Node();
         // buf.next = a->next;
         // buf.prev = a->prev;
@@ -844,57 +910,53 @@ public:
     void merge(list& other) {
         if(this == &other)
             return;
-        auto it1 = begin();
-        size_type this_count = 0;
+        //auto it1 = begin();
+        //auto it2 = other.begin();
         
+        size_type this_count = 0;        
         size_type other_count = 0;
         size_type this_s = size();        
         size_type other_s = other.size();
 
-        
-        auto it2 = other.begin();
+        node_pointer p1 = &begin();
+        node_pointer p2;
+        node_pointer p3 = &other.begin();        
 
         for (size_type i = 0; i < this_s + other_s; i++) {
-
+            p2 = p3;
+            p3 = p3->next;
             //if((*it1 < other.front() && this_count < s) )
-            if(&it1 != nullptr ){                
-                if(*it1 < other.front() && this_count < this_s) 
-                    //|| other_count == other_s) 
+            if(p1 != nullptr && p2 != nullptr) {                
+                if(p1->value < p2->value && this_count < this_s) 
                 {
-                    ++it1;
+                    p1 = p1->next;
+                    //++it1;
                     ++this_count;
                 }
-                //else if (!other.empty()) {
-                //else if (other_count < 568) {
-                else if (other_count < other_s) {
-                //else if (other.size() > 0) {
-                    //it1++;
-                    //insert(it1, std::move(other.front()));                
-                    // if(&it1 == nullptr)
-                    //     push_back(std::move(other.front()));
-                    // else
-                    //insert(it1, std::move(*it2));                
-                    insert(it1, std::move(*it2));        
+                else if (other_count < other_s) { 
+                    insert_node(p1, p2, p3);       
+                    //insert(it1, std::move(*it2));        
                     s++;        
-                    ++it2;
-                    //other.pop_front();
+                    //++it2;
                     ++other_count;
                 }
             }
-            //else if (!other.empty()) {
-            //else if  (other_count < 568)  {
             else if (other_count < other_s) {
-                
+                insert_node(p1, p2, p3);
                 //push_back(std::move(other.front()));
-                push_back(std::move(*it2));
-                ++it2;
-                //other.pop_front();
+                //push_back(std::move(*it2));
+                //++it2;
                 ++other_count;
             }
-            
+            else if (other_count == other_s && p1 != nullptr) {
+                p1 = p1->next;
+                ++this_count;
+            }            
         }  
+        other.first = nullptr;
+        other.last = nullptr;
+        other.s = 0;
         //other.clear();
-
     };
     //void splice(iterator pos, list& other);
     void remove(const T& value) {
@@ -1029,24 +1091,55 @@ public:
                 // }
             }
             a = first;
-            b = a->next;
-
-            
+            b = a->next;            
         }
         while (unsorted_flag);      
     };
 
+    void insert_node (node_pointer &p1, node_pointer &p2, node_pointer &p3) {
+
+        //it++;
+        if(p1 == first) {
+            p2->prev = nullptr;
+            p1->prev = p2;
+            p2->next = p1;
+        }
+        else if (p1 != nullptr && p2 != nullptr){       
+            p1->prev->next = p2;
+            p2->next = p1;
+            p2->prev = p1->prev;
+            p1->prev = p2;
+        }
+        else if (p1 == nullptr) {
+            last->next = p2;
+            p2->prev = last;
+            last = p2;
+            last->next = nullptr;
+        }
+    }
+
     void splice(iterator pos, list& other) {
-        auto it = other.begin();
+        //auto it = other.begin();
         size_type other_s = other.size();
+
+        node_pointer p1 = &pos;
+        node_pointer p2;
+        node_pointer p3 = &other.begin();
+        
         for (size_type i = 0; i < other_s; i++) {
             //push_back(it->value);
-            //it = it->next;
-
-            insert(pos, *it);
-            it++;            
+            //it = it->next;            
+            p2 = p3;
+            p3 = p2->next;
+            insert_node(p1, p2, p3);
+            //insert(pos, std::move_if_noexcept(*it));                        
+            s++;
+            other.s--;// -= 1;
         }    
-        other.clear();
+        other.first = nullptr;
+        other.last = nullptr;
+        
+        //other.clear();
         // for (size_type i = 0; i < other_s; i++) {
         //     other.pop_back();
         // }
@@ -1077,18 +1170,40 @@ private:
         Node *prev;
         Node *next;
         value_type value;
-        Node() : next(NULL), prev(NULL) {
-            value = value_type();
+        Node() : next(NULL), prev(NULL), value(value_type()) 
+        {
+            //value = value_type();
             //value = _traits::allocate(1);
             //_allocator.construct(value, T());;
         };
-        Node(const T &x) : next(NULL), prev(NULL) {
-            value = value_type(x);
+        explicit Node(const T &x) : next(NULL), prev(NULL), value(x) {
+            // if(std::is_copy_constructible<value_type>())
+            //     value = value_type(x);
+            // else {
+            //     /* code */
+            // }
+            
+            //value = value_type();
+            //value = std::forward(x);
             //value = _traits::allocate(1);
             //_allocator.construct(value, x);
         };
-        Node(T &&x) : next(NULL), prev(NULL) {            
-            value = std::move(x);
+        explicit Node(T &&x) : next(NULL), prev(NULL), value(std::move(x)) {            
+            //value = std::move(x);
+            //value.action = "1";
+            //value = _traits::allocate(1);
+            //_allocator.construct(value, x);
+        };
+        template <class... Args>
+        Node(Args&&... args
+        ) : next(NULL), 
+            prev(NULL), 
+            //value(value_type(std::forward<Args>(args)...)) 
+            value(std::forward<Args>(args)...) 
+            
+        {            
+            //value = std::move(x);
+            //value.action = "1";
             //value = _traits::allocate(1);
             //_allocator.construct(value, x);
         };
@@ -1113,10 +1228,7 @@ private:
             //_traits::destroy(value);
             //_traits::deallocate(value, 1);            
         }
-    };
-
-
-    
+    };   
 
     // Your code goes here...
 
