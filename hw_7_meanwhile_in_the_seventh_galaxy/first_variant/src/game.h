@@ -7,68 +7,68 @@
 //class NullType {};
 
 template <size_t Head, size_t... Tail>
-struct FindMax;
+struct FindHeap;
 
 ////////////////   Conditional MAX search
 
 template <bool cond, size_t Head, size_t... Tail>
-struct  Max {
-    static constexpr ssize_t num = FindMax<Tail...>::num;
-    static constexpr ssize_t value = FindMax<Tail...>::value;
-    static constexpr ssize_t max_num = FindMax<Tail...>::max_num;
+struct  Search {
+    static constexpr ssize_t num = FindHeap<Tail...>::num;
+    static constexpr ssize_t value = FindHeap<Tail...>::value;
+    static constexpr ssize_t heap_to_use = FindHeap<Tail...>::heap_to_use;
 };
 
 template <size_t Head, size_t... Tail>
-struct Max<true, Head, Tail...> {
-    static constexpr ssize_t num = FindMax<Tail...>::num;
+struct Search<true, Head, Tail...> {
+    static constexpr ssize_t num = FindHeap<Tail...>::num;
     static constexpr ssize_t value = Head;
-    static constexpr ssize_t max_num = num;
+    static constexpr ssize_t heap_to_use = num;
 };
 
 template <bool cond, size_t Head>
-struct  Max<cond, Head> {
+struct  Search<cond, Head> {
     static constexpr ssize_t num = 0;
     static constexpr ssize_t value = Head;
-    static constexpr ssize_t max_num = 0;
+    static constexpr ssize_t heap_to_use = 0;
 };
 
 ////////////////   Unconditional MAX search
 
 template <size_t Head, size_t... Tail> // first and mid spec
-struct FindMax {
-    static constexpr ssize_t num = 1 + FindMax<Tail...>::num;  // count heaps here
-    static constexpr ssize_t value = Max<(GetBit<Log2<XorSum<Head, Tail...>::value>::value, Head>::value == 1), Head, Tail...>::value; 
-    static constexpr ssize_t max_num = Max<(GetBit<Log2<XorSum<Head, Tail...>::value>::value, Head>::value == 1), Head, Tail...>::max_num;   
+struct FindHeap {
+    static constexpr ssize_t num = 1 + FindHeap<Tail...>::num;  // count heaps here
+    static constexpr ssize_t value = Search<(GetBit<Log2<XorSum<Head, Tail...>::value>::value, Head>::value == 1), Head, Tail...>::value; 
+    static constexpr ssize_t heap_to_use = Search<(GetBit<Log2<XorSum<Head, Tail...>::value>::value, Head>::value == 1), Head, Tail...>::heap_to_use;   
 };
 
 template <size_t Head>  // last spec
-struct  FindMax<Head> {
+struct  FindHeap<Head> {
     static constexpr ssize_t num = 1;  // last element is count 1
     static constexpr ssize_t value = Head;
-    static constexpr ssize_t max_num = 0;  // from last element
+    static constexpr ssize_t heap_to_use = 0;  // from last element
 };
 
 ////////////////   Heap index calculate
 
 template <size_t x, size_t... Heaps>  // usual spec
-struct heap_index {
-    static constexpr ssize_t value = FindMax<Heaps...>::num - FindMax<Heaps...>::max_num - 1;
+struct HeapIndex {
+    static constexpr ssize_t value = FindHeap<Heaps...>::num - FindHeap<Heaps...>::heap_to_use - 1;
 };
 
 template <size_t... Heaps>  // ZERO XOR spec
-struct heap_index<0, Heaps...> {
+struct HeapIndex<0, Heaps...> {
     static constexpr ssize_t value = -1;
 };
 
 ////////////////   Rocks count calculate
 
 template<size_t xor_res, size_t max_res, size_t... Heaps>  // usual spec
-struct rocks_count { 
+struct RocksCount { 
     static constexpr ssize_t value = max_res - XorSum<XorSum<Heaps...>::value, max_res>::value;
 };
 
 template<size_t max_res, size_t... Heaps>  // ZERO XOR spec
-struct rocks_count<0, max_res, Heaps...> {
+struct RocksCount<0, max_res, Heaps...> {
     static constexpr ssize_t value = -1;
 };
 
@@ -77,10 +77,10 @@ struct rocks_count<0, max_res, Heaps...> {
 template <size_t... Heaps>
 struct Game {
     static constexpr bool first_player_wins = XorSum<Heaps...>::value;
-    static constexpr ssize_t first_move_heap_index = heap_index<XorSum<Heaps...>::value, Heaps...>::value;
-    static constexpr ssize_t first_move_rocks_count = rocks_count<XorSum<Heaps...>::value, FindMax<Heaps...>::value, Heaps...>::value;
-    static constexpr ssize_t maxx = FindMax<Heaps...>::value;
-    static constexpr ssize_t maxx_num = FindMax<Heaps...>::num - FindMax<Heaps...>::max_num;
+    static constexpr ssize_t first_move_heap_index = HeapIndex<XorSum<Heaps...>::value, Heaps...>::value;
+    static constexpr ssize_t first_move_rocks_count = RocksCount<XorSum<Heaps...>::value, FindHeap<Heaps...>::value, Heaps...>::value;
+    static constexpr ssize_t maxx = FindHeap<Heaps...>::value;
+    static constexpr ssize_t maxx_num = FindHeap<Heaps...>::num - FindHeap<Heaps...>::heap_to_use;
     
 };
 
